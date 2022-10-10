@@ -9,9 +9,8 @@ You can set up to 8 destination channels achieving multi-channel MIDI polyphony.
                         ┌─────────────────┐
                         │ Polyphonic MIDI │
                         │      device     │
-                        └──┬───────────┬──┘
-                           │ Channel 1 │
-                           └─────┬─────┘
+                        └────────┬────────┘
+                                 │
                            ┌─────┴─────┐
                            │Midispatch │
                            └─────┬─────┘
