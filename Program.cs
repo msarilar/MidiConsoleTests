@@ -1,10 +1,11 @@
 ﻿using Melanchall.DryWetMidi.Common;
 using Melanchall.DryWetMidi.Core;
 using Melanchall.DryWetMidi.Multimedia;
+using System.Text;
 
 T GetDevice<T>(List<T> devices, string itemName)
 {
-    if(!devices.Any())
+    if (!devices.Any())
     {
         throw new InvalidOperationException($"Could not find any {itemName}");
     }
@@ -58,17 +59,20 @@ var currentVoice = -1;
 var resetLeft = Console.CursorLeft;
 var resetTop = Console.CursorTop;
 
-var notes = new [] { "A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#" };
+var notes = new[] { "A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#" };
+var voiceStringBuilder = new StringBuilder();
 void PrintVoices()
 {
     Console.SetCursorPosition(resetLeft, resetTop);
-    foreach(var voice in Enumerable.Range(1, voices))
-    {
-        Console.Write(string.Format("|{0,3}  ", voice));
-    }
-    Console.Write("|");
+    voiceStringBuilder.Length = 0;
 
-    Console.WriteLine();
+    foreach (var voice in Enumerable.Range(1, voices))
+    {
+        voiceStringBuilder.Append(string.Format("|{0,3}  ", voice));
+    }
+
+    voiceStringBuilder.Append('|');
+    voiceStringBuilder.AppendLine();
 
     foreach (var voice in Enumerable.Range(0, voices))
     {
@@ -76,25 +80,30 @@ void PrintVoices()
         if (reversedActiveVoices.TryGetValue(new FourBitNumber((byte)voice), out var played))
         {
             var playedInt = ((int)played);
-            if(playedInt < 21)
+            if (playedInt < 21) // MIDI note should starts at A0=21
             {
                 note = "ERR";
-                continue;
             }
-            var octave = playedInt / 12 + 1;
-            note = notes[(playedInt - 21) % 12] + octave;
+            else
+            {
+                var octave = playedInt / 12 + 1;
+                note = notes[(playedInt - 21) % 12] + octave;
+            }
         }
 
-        Console.Write(string.Format("|{0,4} ", note));
+        voiceStringBuilder.Append(string.Format("|{0,4} ", note));
     }
-    Console.Write("|");
+
+    voiceStringBuilder.Append('|');
+    voiceStringBuilder.AppendLine();
+    Console.Write(voiceStringBuilder);
 }
 
 PrintVoices();
 inputDevice.EventReceived += (o, e) =>
 {
     var changed = false;
-    switch(e.Event.EventType)
+    switch (e.Event.EventType)
     {
         case MidiEventType.NoteOn:
             currentVoice = (currentVoice + 1) % voices;
@@ -108,7 +117,7 @@ inputDevice.EventReceived += (o, e) =>
             break;
         case MidiEventType.NoteOff:
             var noteOff = (NoteOffEvent)e.Event.Clone();
-            if(activeVoices.TryGetValue(noteOff.NoteNumber, out var channel))
+            if (activeVoices.TryGetValue(noteOff.NoteNumber, out var channel))
             {
                 noteOff.Channel = channel;
                 outputDevice.SendEvent(noteOff);
@@ -116,13 +125,14 @@ inputDevice.EventReceived += (o, e) =>
                 activeVoices.Remove(noteOff.NoteNumber);
                 reversedActiveVoices.Remove(channel);
             }
+
             break;
         default:
             outputDevice.SendEvent(e.Event);
             break;
     }
 
-    if(changed)
+    if (changed)
     {
         PrintVoices();
     }
@@ -131,5 +141,6 @@ inputDevice.EventReceived += (o, e) =>
 inputDevice.StartEventsListening();
 
 Console.ReadKey();
+
 inputDevice.Dispose();
 outputDevice.Dispose();
